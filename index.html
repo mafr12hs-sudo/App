@@ -2810,6 +2810,17 @@ const EC = (() => {
   async function boot() {
     sb = window.supabase.createClient(EC_CONFIG.url, EC_CONFIG.anon);
 
+// Se chegamos pelo magic link, espera o cliente processar o token da URL
+    // antes de decidir se há sessão — senão a tela de login pisca por cima.
+    if (location.hash.includes('access_token')) {
+      await new Promise(resolve => {
+        const { data: sub } = sb.auth.onAuthStateChange((_e, s) => {
+          if (s) { sub.subscription.unsubscribe(); resolve(); }
+        });
+        setTimeout(resolve, 4000); // rede de segurança
+      });
+      history.replaceState(null, '', location.pathname); // limpa o token da URL
+    }
     const { data: { session } } = await sb.auth.getSession();
     if (!session) {
       authScreen();
