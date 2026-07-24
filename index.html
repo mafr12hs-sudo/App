@@ -2532,35 +2532,46 @@ const EC = (() => {
         <input id="ec-email" type="email" placeholder="seu@email.com" autocomplete="email"
           style="width:100%;padding:11px 12px;border-radius:6px;border:1px solid #333;
                  background:#18181b;color:#fff;font-size:14px;box-sizing:border-box;">
-        <button id="ec-send" style="width:100%;margin-top:10px;padding:11px;border-radius:6px;
+        <input id="ec-pass" type="password" placeholder="senha" autocomplete="current-password"
+          style="width:100%;margin-top:10px;padding:11px 12px;border-radius:6px;border:1px solid #333;
+                 background:#18181b;color:#fff;font-size:14px;box-sizing:border-box;">
+        <button id="ec-enter" style="width:100%;margin-top:10px;padding:11px;border-radius:6px;
                  border:none;background:#fff;color:#000;font-size:14px;font-weight:600;cursor:pointer;">
-          Enviar link de acesso
+          Entrar
+        </button>
+        <button id="ec-signup" style="width:100%;margin-top:8px;padding:10px;border-radius:6px;
+                 border:1px solid #333;background:transparent;color:#aaa;font-size:13px;cursor:pointer;">
+          Criar conta
         </button>
         <p id="ec-msg" style="color:#888;font-size:12px;line-height:1.5;margin:12px 0 0;min-height:34px;"></p>
       </div>`;
     document.body.appendChild(el);
 
     const msg = el.querySelector('#ec-msg');
-    const btn = el.querySelector('#ec-send');
-    const inp = el.querySelector('#ec-email');
+    const email = () => el.querySelector('#ec-email').value.trim();
+    const pass = () => el.querySelector('#ec-pass').value;
 
-    const send = async () => {
-      const email = inp.value.trim();
-      if (!email) { msg.textContent = 'Digite seu e-mail.'; return; }
-      btn.disabled = true;
-      msg.textContent = 'Enviando…';
-      const { error } = await sb.auth.signInWithOtp({
-        email, options: { emailRedirectTo: window.location.href }
-      });
-      btn.disabled = false;
-      msg.textContent = error
-        ? 'Não deu para enviar: ' + error.message
-        : 'Link enviado. Abra o e-mail neste mesmo dispositivo.';
+    const entrar = async () => {
+      if (!email() || !pass()) { msg.textContent = 'Preencha e-mail e senha.'; return; }
+      msg.textContent = 'Entrando…';
+      const { error } = await sb.auth.signInWithPassword({ email: email(), password: pass() });
+      if (error) { msg.textContent = 'Erro: ' + error.message; return; }
+      closeAuth(); boot();
     };
 
-    btn.onclick = send;
-    inp.onkeydown = e => { if (e.key === 'Enter') send(); };
-    setTimeout(() => inp.focus(), 60);
+    const criar = async () => {
+      if (!email() || pass().length < 6) { msg.textContent = 'Senha precisa de 6+ caracteres.'; return; }
+      msg.textContent = 'Criando conta…';
+      const { data, error } = await sb.auth.signUp({ email: email(), password: pass() });
+      if (error) { msg.textContent = 'Erro: ' + error.message; return; }
+      if (data.session) { closeAuth(); boot(); }
+      else { msg.textContent = 'Conta criada. Agora clique em Entrar.'; }
+    };
+
+    el.querySelector('#ec-enter').onclick = entrar;
+    el.querySelector('#ec-signup').onclick = criar;
+    el.querySelector('#ec-pass').onkeydown = e => { if (e.key === 'Enter') entrar(); };
+    setTimeout(() => el.querySelector('#ec-email').focus(), 60);
   }
 
   const closeAuth = () => document.getElementById('ec-auth')?.remove();
@@ -2818,11 +2829,6 @@ const EC = (() => {
 });
 // Se chegamos pelo magic link, espera o cliente processar o token da URL
     // antes de decidir se há sessão — senão a tela de login pisca por cima.
-    if (location.hash.includes('access_token')) {
-      await new Promise(resolve => {
-        const { data: sub } = sb.auth.onAuthStateChange((_e, s) => {
-          if (s) { sub.subscription.unsubscribe(); resolve(); }
-        });
         setTimeout(resolve, 4000); // rede de segurança
       });
       history.replaceState(null, '', location.pathname); // limpa o token da URL
