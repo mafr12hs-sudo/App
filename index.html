@@ -2808,7 +2808,9 @@ const EC = (() => {
   // ─── BOOT ────────────────────────────────────────────────────
 
   async function boot() {
-    sb = window.supabase.createClient(EC_CONFIG.url, EC_CONFIG.anon);
+   sb = window.supabase.createClient(EC_CONFIG.url, EC_CONFIG.anon, {
+  auth: { detectSessionInUrl: true, persistSession: true, autoRefreshToken: true, flowType: 'implicit' }
+});
 
 // Se chegamos pelo magic link, espera o cliente processar o token da URL
     // antes de decidir se há sessão — senão a tela de login pisca por cima.
